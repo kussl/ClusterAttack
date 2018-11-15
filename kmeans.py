@@ -6,7 +6,7 @@ import numpy as np
 from threading import Thread
 import random,copy,statistics
 import uuid,math,datetime
-
+from math import fabs
 from ds import Dataset, Assignment, Prototype, Cluster
 from distance import Distance 
 class KMeans:
@@ -177,6 +177,7 @@ class KMeans:
 	def cluster(self,X_train,X_test,K,N,M=20,min_acc=0.5,mode=0):
 		#Repeat the execution until a minimum quality is acheived 
 		score = 0
+		pscore = 0 #Previous score 
 		#Count the iterations
 		i=0
 		while score < min_acc:
@@ -188,9 +189,13 @@ class KMeans:
 			T = PR.transition_matrix(clusters)
 			clusters,F,P = PR.cross_validate(X_test,clusters,T,N)
 			#Score means the sum of proportion of correct predictions more than N/2. 
+			pscore = score 
 			score = round(sum(F[math.ceil(N/2):]),3)
-			#print(score)
+			print(score)
 			i+=1 
+			if fabs(score-pscore) < 0.05: 
+				break 
+
 		return clusters,score,T,F
 
 

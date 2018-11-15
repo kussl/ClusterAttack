@@ -69,24 +69,34 @@ class CrossValidator:
 			observed = X_test[i]
 			#Which cluster does it belong to?
 			observed_cluster = DT.closest_cluster(observed,clusters)
+
+			#print('Obs:',observed)
+			#print('Obs C:',observed_cluster)
+
 			#Target server's choice
 			choice = X_test[i+1]
 			#Which cluster does it belong to?
 			choice_cluster = DT.closest_cluster(choice,clusters)
+			#print('Choice:',choice)
+			#print('Choice C:',choice_cluster)
+
 			#What do clusters say about the next choice of server?
 			#Take TWO clusters as the most likely.
 			row = T[observed_cluster].index(max(T[observed_cluster]))
 			predictions = [] 
 			predictions += clusters[row].assignments
+
 			#predictions.append(clusters[row].prototype)
 			#How good was the prediction?
 			accuracy = self.prediction_accuracy(choice,predictions)
+			#print('Acc:',accuracy)
 			clusters[row].accuracy = round((clusters[row].accuracy+accuracy)/2,3)
 			F[accuracy]+=1 
 			P.append(predictions)
 
 		#Number of total predictions
 		n = len(X_test)
+		#raise Exception('Just for testing.')
 		return clusters,[round(f/n,3) for f in F],P
 
 

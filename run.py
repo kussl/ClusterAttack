@@ -1,9 +1,9 @@
 import numpy as np
 import csv,sys,random,math
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import statistics as stats 
-#import sklearn.preprocessing as prp 
-#from scipy.linalg import norm
+import sklearn.preprocessing as prp 
+from scipy.linalg import norm
 from crossval import CrossValidator  
 from sklearn.model_selection import train_test_split
 from datetime import datetime 
@@ -12,6 +12,8 @@ from kmeans import KMeans
 from ds import Dataset, Assignment
 import statistics
 from numpy import corrcoef
+from scipy.linalg import norm
+from plots import scatter_plot
 
 
 def IPdata(source='IPdata.csv',upto=2):
@@ -63,6 +65,7 @@ def dump_results(clusters,F,score,ext='',AS=0):
 		print(cluster.cid, cluster.accuracy,file=f)
 	f.close()
 
+
 def driver_cluster_leading_bits(dataset,N=10,kp=0.1,test=False,reportclusters=False,min_acc=0.5,mode=0):
 	#Stores the quality reports for the clusters.
 	scores = [] 
@@ -84,6 +87,7 @@ def driver_cluster_leading_bits(dataset,N=10,kp=0.1,test=False,reportclusters=Fa
 	clusters,score,T,F = CI.cluster(X_train,X_test,K,N,min_acc=min_acc,mode=mode)
 	dump_results(clusters,F,score)
 	print('Final no of clusters:',len(clusters))
+	scatter_plot(clusters,'dataset',N,score,bytes=[1,2])
 	return clusters,T,X_test
 
 
@@ -123,6 +127,7 @@ def driver_cluster_third_eight_bits(data,clusters,N,kp,min_acc,f,s,ext):
 
 	dump_results(clusters,F,score,ext)
 	print('Final no of clusters:',len(clusters))
+	scatter_plot(clusters,'dataset',N,score,bytes=[f+1,s+1])
 	return clusters,T,X_test
 
 '''
@@ -140,16 +145,10 @@ def driver_cluster_full_address(dataset,N,kp,min_acc,mode):
 	T_set.append(T)
 	X_tests.append(X_test)
 	
-	clusters,T,X_test = driver_cluster_third_eight_bits(dataset,clusters,N,kp,min_acc/2,1,2,'-2')
+	clusters,T,X_test = driver_cluster_third_eight_bits(dataset,clusters,N,kp,min_acc*.9,1,2,'-2')
 	clusters_set.append(clusters)
 	T_set.append(T)
 	print('Results 2 recorded.')
-
-	# clusters,T,X_test =driver_cluster_third_eight_bits(dataset,clusters,N,kp,0.05,2,3,'-3')
-	# clusters_set.append(clusters)
-	# T_set.append(T)
-	# X_tests.append(X_test)
-	# print('Results 3 recorded.')
 
 	print('Hierarchical cross validation:')
 	PR = CrossValidator()
@@ -168,6 +167,7 @@ def correlation(dataset,i,j):
 
 	cc = corrcoef(X,Y)
 	return cc 
+
 
 
 def driver():
@@ -192,9 +192,9 @@ def driver():
 	else: 
 		mode = 0 #Random vs most frequent initialization 
 	#print('Min accuracy:',min_acc)
-	dataset = retrieve_data(sourcefile,5)
-	print('Pearson product-moment correlation coefficients:\n',correlation(dataset,0,1),'\n',
-		correlation(dataset,1,2),'\n',correlation(dataset,2,3),'\n',correlation(dataset,1,3),'\n' )
+	dataset = retrieve_data(sourcefile,N)
+	#print('Pearson product-moment correlation coefficients:\n',correlation(dataset,0,1),'\n',
+	#	correlation(dataset,1,2),'\n',correlation(dataset,2,3),'\n',correlation(dataset,1,3),'\n' )
 	driver_cluster_full_address(dataset,N,kp,min_acc,mode)
 
 driver()
