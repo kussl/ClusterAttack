@@ -195,6 +195,8 @@ def driver():
 	dataset = retrieve_data(sourcefile,N)
 	#print('Pearson product-moment correlation coefficients:\n',correlation(dataset,0,1),'\n',
 	#	correlation(dataset,1,2),'\n',correlation(dataset,2,3),'\n',correlation(dataset,1,3),'\n' )
+	print(datetime.now())
 	driver_cluster_full_address(dataset,N,kp,min_acc,mode)
+	print(datetime.now())
 
 driver()
