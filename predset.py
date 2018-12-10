@@ -1,5 +1,5 @@
 import numpy as np
-import csv,sys,random,math
+import csv,sys,random,math,os
 import matplotlib.pyplot as plt
 import statistics as stats 
 import sklearn.preprocessing as prp 
@@ -14,6 +14,11 @@ import statistics
 from numpy import corrcoef
 from scipy.linalg import norm
 from plots import scatter_plot
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+workingpath = ''
 
 
 def IPdata(source='IPdata.csv',upto=2):
@@ -46,21 +51,22 @@ def processIPData(addresses,N=5):
       k+=1 
    return dataset
 
-def retrieve_data(sourcefile,N):
-	S=IPdata(source=sourcefile,upto=4)
+def retrieve_data(sourcefile,N,limit=-1):
+	S=IPdata(source=sourcefile,upto=4)[:limit]
 	dataset = processIPData(S,N=N)
 	print('Data points retrieved:', len(dataset),'x',N)
 	return dataset
 
-def dump_results(clusters,F,score,ext='',AS=0):
-	f = open('results'+ext, 'w')
+def dump_results(clusters,F,score,path,ext='',AS=0):
+	print('Writing results in',path+'/results')
+	f = open(path+'/results'+ext, 'w')
 	print('Results: ',file=f)
 	print('>ceil(N/2)', score, file=f)
 	print('1..N', F,file=f)
 	if AS > 0: print('Assignments used', AS,file=f)
 	print('Points in clusters: ', sum([len(cluster.assignments) for cluster in clusters]), file=f)
 	f.close()
-	f = open('cluster_acc'+ext,'w')
+	f = open(path+'/cluster_acc'+ext,'w')
 	for cluster in clusters:
 		print(cluster.cid, cluster.accuracy,file=f)
 	f.close()
@@ -85,10 +91,10 @@ def driver_cluster_leading_bits(dataset,N=10,kp=0.1,test=False,reportclusters=Fa
 
 	CI = KMeans()
 	clusters,score,T,F = CI.cluster(X_train,X_test,K,N,min_acc=min_acc,mode=mode)
-	dump_results(clusters,F,score)
+
 	print('Final no of clusters:',len(clusters))
-	scatter_plot(clusters,'dataset',N,score,bytes=[1,2])
-	return clusters,T,X_test
+	#scatter_plot(clusters,'dataset',N,score,bytes=[1,2])
+	return clusters,F,T,X_test,score
 
 
 
@@ -125,27 +131,29 @@ def driver_cluster_third_eight_bits(data,clusters,N,kp,min_acc,f,s,ext):
 	CI = KMeans()
 	clusters,score,T,F = CI.cluster(X_train,X_test,K,N,min_acc=min_acc,mode=0)
 
-	dump_results(clusters,F,score,ext)
 	print('Final no of clusters:',len(clusters))
-	scatter_plot(clusters,'dataset',N,score,bytes=[f+1,s+1])
-	return clusters,T,X_test
+	#scatter_plot(clusters,'dataset',N,score,bytes=[f+1,s+1])
+	return clusters,F,T,X_test,score
 
 '''
 This driver, develops three cluster sets and performs ONE complete 
 cross validation for ALL predictions of the full IP address. 
 '''
-def driver_cluster_full_address(dataset,N,kp,min_acc,mode):
+def driver_cluster_full_address(dataset,N,kp,min_acc,mode,lworkingpath):
 	clusters_set = [] 
 	T_set = []
 	X_tests = []
 	P_set = [] 
-	clusters,T,X_test = driver_cluster_leading_bits(dataset,N,kp,min_acc=min_acc,mode=mode)
+	clusters,F,T,X_test,score = driver_cluster_leading_bits(dataset,N,kp,min_acc=min_acc,mode=mode)
+	dump_results(clusters,F,score,lworkingpath)
 	print('Results 1 recorded.')
 	clusters_set.append(clusters)
 	T_set.append(T)
 	X_tests.append(X_test)
 	
-	clusters,T,X_test = driver_cluster_third_eight_bits(dataset,clusters,N,kp,min_acc*.9,1,2,'-2')
+	clusters,F,T,X_test,score = driver_cluster_third_eight_bits(dataset,clusters,N,kp,min_acc*.9,1,2,'-2')
+	dump_results(clusters,F,score,lworkingpath,ext='-2')
+
 	clusters_set.append(clusters)
 	T_set.append(T)
 	print('Results 2 recorded.')
@@ -154,7 +162,7 @@ def driver_cluster_full_address(dataset,N,kp,min_acc,mode):
 	PR = CrossValidator()
 	clusters,F,AS = PR.hierarchical_cross_validate(X_tests,clusters_set,T_set,N)
 	score = round(sum(F[math.ceil(N/2):]),3)
-	dump_results(clusters,F,score,'-all',AS=AS)
+	dump_results(clusters,F,score,lworkingpath,'-all',AS=AS)
 	
 
 def correlation(dataset,i,j):
@@ -169,34 +177,57 @@ def correlation(dataset,i,j):
 	return cc 
 
 
+def check_group_intersections():
+	N = 200
+	source = sys.argv[1]
+	print('Checking group intersections for N=',N,'in',source)
+	dataset = retrieve_data(source,N,-1)
+	if len(dataset) == 0: 
+		print('No dataset retrieved.')
+		return 
+	print('Dataset size:',len(dataset),'x',N)
+	L = [] 
+	CV = CrossValidator()
+	for i in range(len(dataset)-1): 
+		A = CV.IPlist_tostr(dataset[i].addresses,include=4)
+		B = CV.IPlist_tostr(dataset[i+1].addresses,include=4)
+		# print(A)
+		# print(B)
+		# print((A&B))
+		if len((A&B)) > 0: 
+			L.append((i,i+1))
+	print(L)
 
-def driver():
-	if len(sys.argv) > 1: 
-		sourcefile=sys.argv[1]
-	else:
-		sourcefile = 'data_aws_ireland.csv' #Default set. 
-	if len(sys.argv) > 2: 
-		N=int(sys.argv[2])
-	else:
-		N=5 
-	if len(sys.argv) > 3: 
-		kp=float(sys.argv[3])
-	else:
-		kp=0.05
-	if len(sys.argv) > 4: 
-		min_acc = float(sys.argv[4])
-	else:
-		min_acc = 0.2
-	if len(sys.argv) > 5: 
-		mode = int(sys.argv[5])
-	else: 
-		mode = 0 #Random vs most frequent initialization 
-	#print('Min accuracy:',min_acc)
-	dataset = retrieve_data(sourcefile,N)
+
+
+def driver(sourcefile='data_aws_ireland.csv',N=5,kp=0.05,min_acc = 0.2,datalimit=-1,redirectouput=True,lworkingpath='~/'):
+	# if len(sys.argv) > 1: 
+	# 	sourcefile=sys.argv[1]
+	# if len(sys.argv) > 2: 
+	# 	N=int(sys.argv[2])
+	# if len(sys.argv) > 3: 
+	# 	kp=float(sys.argv[3])
+	# if len(sys.argv) > 4: 
+	# 	min_acc = float(sys.argv[4])
+	# if len(sys.argv) > 5: 
+	# 	datalimit = int(sys.argv[5])
+	global workingpath
+	workingpath = os.path.expanduser(lworkingpath)
+	# if redirectouput:
+	# 	sys.stdout = open(os.path.expanduser(workingpath)+'/output', 'w')	
+
+	if len(workingpath) is 0:
+		#raise Exception('No obvious working path...',lworkingpath)
+		workingpath = lworkingpath
+	print('Working path set to',workingpath)	
+
+	mode = 0 #Random vs most frequent initialization 
+	#print(sys.argv)
+	print('Data limit:', datalimit, 'KP', kp, 'N', N, 'Min accuracy', min_acc)
+	dataset = retrieve_data(sourcefile,N,datalimit)
 	#print('Pearson product-moment correlation coefficients:\n',correlation(dataset,0,1),'\n',
 	#	correlation(dataset,1,2),'\n',correlation(dataset,2,3),'\n',correlation(dataset,1,3),'\n' )
 	print(datetime.now())
-	driver_cluster_full_address(dataset,N,kp,min_acc,mode)
+	driver_cluster_full_address(dataset,N,kp,min_acc,mode,lworkingpath)
 	print(datetime.now())
 
-driver()

@@ -193,7 +193,7 @@ class KMeans:
 			score = round(sum(F[math.ceil(N/2):]),3)
 			print(score)
 			i+=1 
-			if fabs(score-pscore) < 0.05: 
+			if fabs(score-pscore) < 0.01: 
 				break 
 
 		return clusters,score,T,F

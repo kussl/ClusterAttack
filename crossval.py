@@ -35,6 +35,26 @@ class CrossValidator:
 
 		return T 
 
+
+	'''
+	This is a helper function to correctly map IP addresses
+	to strings that are ready for comparison. 
+	When an IP address is less than 3 digits, a 0 is added 
+	to its beginning. 
+	'''
+
+	def IPlist_tostr(self,IPlist,include=3):
+		A = set()
+		for IP in IPlist:
+			IPs = '' 
+			for i in range(include):
+				IPstr = str(IP[i])
+				if len(IPstr) < 3: 
+					IPstr = '0'+IPstr
+				IPs+=IPstr
+			A.add(IPs)
+		return A 
+
 	'''
 	Compute accuracy of prediction by finding the intersection of
 	the target server's choice with the predicted addresses. 
@@ -45,10 +65,12 @@ class CrossValidator:
 	which will be kept in a set. 
 	'''
 	def prediction_accuracy(self,choice,predictions):
-		A = {str(IP[0])+str(IP[1]) for IP in choice.addresses.tolist()}
+		#A = {str(IP[0])+str(IP[1]) for IP in choice.addresses.tolist()}
+		A = self.IPlist_tostr(choice.addresses.tolist(),include=2)
 		B = set()
 		for p in predictions:
-			B|={str(IP[0])+str(IP[1]) for IP in p.addresses.tolist()}
+			#B|={str(IP[0])+str(IP[1]) for IP in p.addresses.tolist()}
+			B|=self.IPlist_tostr(p.addresses.tolist(),include=2)
 		return len(A & B)
 
 
@@ -104,14 +126,23 @@ class CrossValidator:
 	The same as prediction_accuracy, but for the entire IP address.
 	'''
 	def prediction_accuracy_full(self,choice,predictions):
-		A = {str(IP[0])+str(IP[1])+str(IP[2]) for IP in choice.addresses.tolist()}
+		#A = {str(IP[0])+str(IP[1])+str(IP[2]) for IP in choice.addresses.tolist()}
+		A = self.IPlist_tostr(choice.addresses.tolist())
+
+
 		B = set()
 		for p in predictions:
 			if len(p.full_addresses) > 0:
 				addresses = p.full_addresses
 			else:
 				addresses = p.addresses
-			B|={str(IP[0])+str(IP[1])+str(IP[2]) for IP in list(addresses)}
+			#B|={str(IP[0])+str(IP[1])+str(IP[2]) for IP in list(addresses)}
+			B|=self.IPlist_tostr(list(addresses))
+
+		# print(B)
+		# print(A)
+		# print(A&B)
+		# raise Exception('Just for testing.')
 		if len(B) == 0:
 			raise Exception('Empty predictions', p.full_addresses)
 		return len(A & B)
@@ -119,15 +150,15 @@ class CrossValidator:
 	'''
 	Cross-validate a FULL IP address using three clusters. 
 	Here, we will pick an observed and a choice address, A. Then, use three 
-	matrixes T_1, T_2, and T_3 to pick the bits 0--15, then bits 9--23, and finally
+	matrices T_1, T_2, and T_3 to pick the bits 0--15, then bits 9--23, and finally
 	bits 16--32. 
-	Using all the matrixes, find three prototypes as predictions. Then, 
+	Using all the matrices, find three prototypes as predictions. Then, 
 	intersect all the prototypes in a single set B, and measure the intersection
 	of A and B as the quality of prediction.
 	The set B must include values for the right bits. For example, if 
 	from T_1, we conclude 54120 as the first 16 bits and from T_2, we concluded
 	12066 for the bits 8--24, then we can construct the values for 0--24. 
-	Here, clusters is a set of cluster sets and T is a set of matrixes. 
+	Here, clusters is a set of cluster sets and T is a set of matrices. 
 	clusters_set is assumed to include clusters for bytes (0,1), (1,2), and 2,3. 
 	'''
 	def hierarchical_cross_validate(self,X_tests,clusters_set,T_set,N):

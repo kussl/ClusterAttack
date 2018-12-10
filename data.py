@@ -26,6 +26,11 @@ class DataSource:
 			{'$group': {'_id': {'address': '$subnet3' }, 'date': {'$push': '$date' } , 'count': {'$sum': 1} } }
 		])
 		return list(cursor) 
+
+	def datasets(self):
+		db = self.IPdatabase()
+		sets = db.collection_names()
+		return list(sets)
 	
 
 class DataDriver:
