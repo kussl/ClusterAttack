@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams,rc
 import statistics
 from scipy.linalg import norm
-from ggplot import *
 import statistics as stats 
 
 

@@ -121,6 +121,30 @@ class CrossValidator:
 		#raise Exception('Just for testing.')
 		return clusters,[round(f/n,3) for f in F],P
 
+	def simulate_uniform_firsttwo(self,X_train,X_tests,N,upto): 
+		'''
+		Use the test sequence as choices and choose random values
+		from the training sequence to match. 
+		''' 
+		DT = Distance()
+		#Frequency of the number of correct predictions wrt N:
+		F = [0]*(N+1)
+		#Roll through the test set. 
+		X_test = X_tests[0] 
+		#Avg. number of assignments used for prediction.
+		#This will vary when using entire clusters.
+		assignments_used = 0 
+
+		for i in range(len(X_test)-1):
+			predictions = [] 
+			choice = X_test[i+1]
+			predictions += [random.choice(X_train) for i in range(upto)]
+			accuracy = self.prediction_accuracy(choice,predictions)
+			F[accuracy]+=1 
+
+		n = len(X_test)
+		return [round(f/n,3) for f in F],assignments_used
+
 
 	'''
 	The same as prediction_accuracy, but for the entire IP address.
@@ -195,14 +219,16 @@ class CrossValidator:
 				row = T[observed_cluster].index(max(T[observed_cluster]))
 				#candidates.append(clusters[row].assignments)
 				k = len(clusters[row].assignments)
-				if k > 40:
-					k = 40 
+				if k > 20:
+				 	k = 20 
+				#k = -1 
 				predictions += clusters[row].assignments[:k]
+				#predictions += [clusters[row].prototype]
 				#predictions += random.sample(clusters[row].assignments,k)
 				#predictions += [clusters[row].prototype]
 
-			if len(predictions) < 3: 
-				raise Exception('Could not find three clusters for the choice. This must alsways be three!')		
+			if len(predictions) < 2: 
+				raise Exception('Could not find two clusters for the choice. ')		
 
 			#How good was the prediction?
 			# print('Choice:', choice)
@@ -216,3 +242,27 @@ class CrossValidator:
 		#Number of total predictions
 		n = len(X_test)
 		return clusters,[round(f/n,3) for f in F],assignments_used
+
+	def simulate_uniform(self,X_train,X_tests,N): 
+		'''
+		Use the test sequence as choices and choose random values
+		from the training sequence to match. 
+		''' 
+		DT = Distance()
+		#Frequency of the number of correct predictions wrt N:
+		F = [0]*(N+1)
+		#Roll through the test set. 
+		X_test = X_tests[0] 
+		#Avg. number of assignments used for prediction.
+		#This will vary when using entire clusters.
+		assignments_used = 0 
+
+		for i in range(len(X_test)-1):
+			predictions = [] 
+			choice = X_test[i+1]
+			predictions += [random.choice(X_train) for i in range(35)]
+			accuracy = self.prediction_accuracy_full(choice,predictions)
+			F[accuracy]+=1 
+
+		n = len(X_test)
+		return [round(f/n,3) for f in F],assignments_used

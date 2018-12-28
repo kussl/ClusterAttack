@@ -1,4 +1,4 @@
-import pymongo,csv
+import pymongo,csv,math
 from bson.json_util import loads
 
 class DataSource:
@@ -7,18 +7,38 @@ class DataSource:
 
 	def IPdatabase(self):
 		client = pymongo.MongoClient('localhost', 27017)
-		db = client.IPdatabase 
+		db = client.IPdatabase2 
+		return db
+
+	def IPdatabase2(self):
+		client = pymongo.MongoClient('localhost', 27017)
+		db = client.IPdatabase
 		return db
 
 	def getrawdata(self,collection='data_aws_us_west_1',appendname=False, collindex=None):
 		db = self.IPdatabase()
-		cursor = db[collection].find()
+		cursor = db[collection].find().sort('date',pymongo.ASCENDING)
 		if appendname:
 			if collindex is not None:
 				return [ [doc['subnet1'],doc['subnet2'],doc['subnet3'],doc['subnet4'],collindex] for doc in cursor]	
 			else: 
 				return [ [doc['subnet1'],doc['subnet2'],doc['subnet3'],doc['subnet4'],collection] for doc in cursor]	
 		return [ [doc['subnet1'],doc['subnet2'],doc['subnet3'],doc['subnet4']] for doc in cursor]
+
+	def getbaredata(self,collection):
+		db = self.IPdatabase()
+		cursor = db[collection].find().sort('date',pymongo.ASCENDING)#.limit(4000)
+		return list(cursor)
+
+	def getbareIPaddresses(self,collection,byte):
+		db = self.IPdatabase()
+		cursor = db[collection].find({},{"subnet"+str(byte):1}).sort('date',pymongo.ASCENDING)#.limit(4000)
+		return [rec['subnet'+str(byte)] for rec in list(cursor)]
+
+	def getbareIPaddresses016(self,collection):
+		db = self.IPdatabase()
+		cursor = db[collection].find({},{"subnet1":1,"subnet2":1}).sort('date',pymongo.ASCENDING)#.limit(4000)
+		return [str(rec['subnet1'])+str(rec['subnet2']) for rec in list(cursor)]
 
 	def getthirdwithdate(self,collection='data_aws_ireland'):
 		db = self.IPdatabase()
@@ -30,8 +50,126 @@ class DataSource:
 	def datasets(self):
 		db = self.IPdatabase()
 		sets = db.collection_names()
-		return list(sets)
-	
+		return sorted(list(sets))
+
+	def unique_values(self,collection,upto):
+		db = self.IPdatabase()
+		cursor = db[collection].find()
+		IPset = set()
+		for row in cursor: 
+			strip = ''
+			i = 0 
+			for i in range(1,upto):
+				strip += str(row['subnet'+str(i)])+'.'
+			strip+=str(row['subnet'+str(i+1)])
+			#strip = str(row['subnet1'])+'.'+str(row['subnet2'])+'.'+str(row['subnet3'])+'.'+str(row['subnet4'])
+			IPset.add(strip)
+		return IPset 
+
+	def dataset_size(self,collection):
+		db = self.IPdatabase()
+		cursor = db[collection].count()
+		return cursor
+
+	def unique_values2(self,collection,upto):
+		db = self.IPdatabase()
+		projected = dict()
+		for i in range(1,upto+1):
+			projected[str(i)] = '$subnet'+str(i)
+		cursor = db[collection].aggregate(
+				   [
+				   	  {'$sort': {'date': -1} },
+				   	  #{ '$limit' : 4000 },
+
+				      {
+				        '$group' : {
+				           '_id' : projected,
+				           'count': { "$sum": 1 }
+				        }
+				      }, 
+
+				   ]
+				)
+		return cursor
+
+	def unique_values_per_day(self,collection,upto):
+		db = self.IPdatabase()
+		projected = []
+		for i in range(1,upto+1):
+			projected.append('$subnet'+str(i))
+		cursor = db[collection].aggregate(
+				   [
+				   	  {'$sort': {'date': -1} },
+				   	  {'$project':
+				         {
+				          'yearMonthDayUTC': { '$dateToString': { 'format': "%Y-%m-%d", 'date': "$date" } },
+				          'address': projected,
+				         }
+				      },
+				      {
+				        '$group' : {
+				           '_id' :  {'date': '$yearMonthDayUTC', 'address': '$address'},
+				           'count': { "$sum": 1 }
+				        }
+				      }, 
+
+				   ]
+				)
+		return cursor
+
+	def value_frequencies(self,collection,upto):
+		db = self.IPdatabase()
+		values = self.unique_values2(collection,upto)
+		count = self.dataset_size(collection)
+		freqs = [] 
+		for value in values:
+			IP = str(value['_id']['1'])
+			for i in range(2,upto+1):
+				IP += '.'+str(value['_id'][str(i)])
+			freq = value['count'] 
+			relative_freq = round(freq/count,5)
+			freqs.append((IP,relative_freq))
+		return sorted(freqs,key=lambda x:x[1],reverse=True)
+
+
+	def rel_freq(self,collection,byte):
+		db = self.IPdatabase()
+		count = int(db[collection].count())
+		cursor = db[collection].aggregate([ { '$group': {'_id': "$subnet"+str(byte), 'count':{'$sum': 1}}}])
+		res = []
+		i = 0
+		for rec in cursor: 
+			p = rec['count']/count
+			res.append((rec['_id'], p, math.log(p), rec['count']))
+			i+=1
+		res = sorted(res, key=lambda x: x[1], reverse=True)
+
+		res1 = round(-sum([p[1]*p[2] for p in res]),3), round(math.log(count),3), i
+
+		cursor = db[collection].aggregate([ { '$group': {'_id': {'1':"$subnet1",'2':"$subnet2",'3':"$subnet3" }, 'count':{'$sum': 1}}}]) 
+
+		res = []
+		i = 0 
+		for rec in cursor: 
+			p = rec['count']/count
+			res.append((rec['_id'], p, math.log(p)))
+			i+=1 
+		res = sorted(res, key=lambda x: x[1], reverse=True)
+		res2 = round(-sum([p[1]*p[2] for p in res]),3), round(math.log(i),3), i
+		return res1, res2
+
+	def convert_all_to_int(self):
+		db = self.IPdatabase()
+		db2 = self.IPdatabase2()
+		datasets = self.datasets()
+		for dataset in datasets: 
+			cursor = db[dataset].find()
+			coll = db2[dataset]
+			for row in cursor:
+				for i in range(1,5): 
+					row['subnet'+str(i)] = int(row['subnet'+str(i)])
+				coll.insert_one(row)
+
 
 class DataDriver:
 	def __init__(self):

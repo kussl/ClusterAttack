@@ -60,7 +60,7 @@ class KMeans:
 		#Remove all the data assignments are identical to mf. 
 		assignment = data[mf[0]]
 		while True: 
-			#Find the next occurance of assignment: 
+			#Find the next occurrence of assignment: 
 			index = data.assignments.index(assignment)
 			if index == -1:
 				break 
@@ -75,7 +75,7 @@ class KMeans:
 	Initialize K clusters to be used later within the clustering loop.
 	The initializers could be different: random or based on frequency. 
 	'''
-	def initialize_clusters(self,data,K,mode=0):
+	def initialize_clusters(self,data,K):
 		if not isinstance(data,Dataset):
 			raise Exception('Dataset of unexpected type.')
 
@@ -91,13 +91,8 @@ class KMeans:
 
 		for i in range(K):
 			#Choose the cluster
-			if mode == 0: 
-				cluster,indexes = self.initializer_random_pick(data,indexes,M)
-			else: 
-				cluster,indexes = self.initializer_most_frequent(data,indexes,M)
+			cluster,indexes = self.initializer_random_pick(data,indexes,M)
 			C.append(cluster)
-		#print(K,' initial clusters formed.', end=' ')			
-		#Compute prototypes
 		C = self.prototypes(C)
 		return C
 
@@ -118,7 +113,7 @@ class KMeans:
 		for cluster in xclusters: 
 			SX+= cluster.prototype.distance
 
-		#print(SX,SC,abs(SX-SC))
+		print(SX,SC,abs(SX-SC))
 		return (SX==SC), abs(SX-SC)
 
 
@@ -172,19 +167,17 @@ class KMeans:
 
 	'''
 	A driver to run the clustering algorithm and then test the quality of the results. 
-	This driver repeats the cluster until a minimum accruacy is assured.
+	This driver repeats the cluster until a minimum accuracy is assured.
 	'''
-	def cluster(self,X_train,X_test,K,N,M=20,min_acc=0.5,mode=0):
-		#Repeat the execution until a minimum quality is acheived 
+	def cluster_old(self,X_train,X_test,K,N,M=20,min_acc=0.5):
+		#Repeat the execution until a minimum quality is achieved 
 		score = 0
 		pscore = 0 #Previous score 
 		#Count the iterations
 		i=0
 		while score < min_acc:
-			clusters = self.initialize_clusters(X_train,K,mode=mode)
-			#print('init..')
-			clusters = self.cluster_alg(X_train,K,clusters)
-			#print('clustered...')
+			clusters = self.initialize_clusters(X_train,K)
+			print('init..')
 			PR = CrossValidator()
 			T = PR.transition_matrix(clusters)
 			clusters,F,P = PR.cross_validate(X_test,clusters,T,N)
@@ -193,9 +186,29 @@ class KMeans:
 			score = round(sum(F[math.ceil(N/2):]),3)
 			print(score)
 			i+=1 
-			if fabs(score-pscore) < 0.01: 
-				break 
+			# if (fabs(score-pscore) < 0.01) and (score > pscore): 
+			# 	break
+			break 
+
+		first_clusters = copy.deepcopy(clusters)
+		first_score = score 
+		first_F = F
+		first_T = T 
+		clusters = self.cluster_alg(X_train,K,clusters)
+		print('clustered...') 
+		clusters,F,P = PR.cross_validate(X_test,clusters,T,N)
+		score = round(sum(F[math.ceil(N/2):]),3)
+		print(score)
+
+		if first_score > score: 
+			clusters = first_clusters
+			score = first_score
+			T = first_T 
+			F = first_F 
 
 		return clusters,score,T,F
 
+	def cluster(self,X_train,X_test,K,N):
+		clusters = self.initialize_clusters(X_train,K)
+		return clusters
 

@@ -14,6 +14,8 @@ import statistics
 from numpy import corrcoef
 from scipy.linalg import norm
 from plots import scatter_plot
+from math import floor
+
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -72,14 +74,14 @@ def dump_results(clusters,F,score,path,ext='',AS=0):
 	f.close()
 
 
-def driver_cluster_leading_bits(dataset,N=10,kp=0.1,test=False,reportclusters=False,min_acc=0.5,mode=0):
+def cluster1(dataset,N=10,kp=0.1,test=False,reportclusters=False,min_acc=0.5):
 	#Stores the quality reports for the clusters.
 	scores = [] 
 
 	n = len(dataset)
 
 	#A cutoff to separate train and test sequences. 
-	train_cutoff = int(n*0.75)
+	train_cutoff = int(n*0.70)
 	
 	X_train = Dataset(assignments=dataset[:train_cutoff],N=N)
 	X_test  = Dataset(assignments=dataset[train_cutoff:],N=N)
@@ -90,21 +92,19 @@ def driver_cluster_leading_bits(dataset,N=10,kp=0.1,test=False,reportclusters=Fa
 	print('Requesting K:',K, 'size of training set is',train_cutoff)
 
 	CI = KMeans()
-	clusters,score,T,F = CI.cluster(X_train,X_test,K,N,min_acc=min_acc,mode=mode)
+	clusters,score,T,F = CI.cluster(X_train,X_test,K,N,min_acc=min_acc)
 
 	print('Final no of clusters:',len(clusters))
 	#scatter_plot(clusters,'dataset',N,score,bytes=[1,2])
-	return clusters,F,T,X_test,score
+	return clusters,F,T,X_test,score,X_train,X_test
 
 
-
-#This function is ONLY for testing. Don't take it serious. 
 '''
 1. Take clusters that were computed for the leading 16 bits.
 2. Collect all the assignments in a NEW dataset. 
 3. Run the clustering over the entire data set, only taking the second and the third octets.
 '''
-def driver_cluster_third_eight_bits(data,clusters,N,kp,min_acc,f,s,ext):
+def cluster2(data,clusters,N,kp,min_acc,f,s,ext):
 	print('Now clustering the next level..')
 	dataset = Dataset(assignments=[],N=N)
 
@@ -129,29 +129,43 @@ def driver_cluster_third_eight_bits(data,clusters,N,kp,min_acc,f,s,ext):
 	print('Requesting K:',K, 'size of training set is',train_cutoff)
 
 	CI = KMeans()
-	clusters,score,T,F = CI.cluster(X_train,X_test,K,N,min_acc=min_acc,mode=0)
+	clusters,score,T,F = CI.cluster(X_train,X_test,K,N,min_acc=min_acc)
 
 	print('Final no of clusters:',len(clusters))
 	#scatter_plot(clusters,'dataset',N,score,bytes=[f+1,s+1])
-	return clusters,F,T,X_test,score
+	return clusters,F,T,X_test,score,X_train
 
 '''
 This driver, develops three cluster sets and performs ONE complete 
 cross validation for ALL predictions of the full IP address. 
 '''
-def driver_cluster_full_address(dataset,N,kp,min_acc,mode,lworkingpath):
+def cluster_all(dataset,N,kp,min_acc,mode,lworkingpath):
 	clusters_set = [] 
 	T_set = []
 	X_tests = []
 	P_set = [] 
-	clusters,F,T,X_test,score = driver_cluster_leading_bits(dataset,N,kp,min_acc=min_acc,mode=mode)
+	clusters,F,T,X_test,score,X_train,X_test = cluster1(dataset,N,kp,min_acc=min_acc)
 	dump_results(clusters,F,score,lworkingpath)
 	print('Results 1 recorded.')
 	clusters_set.append(clusters)
 	T_set.append(T)
 	X_tests.append(X_test)
+
+	PR = CrossValidator()
+	upto = 0
+
+	for cluster in clusters: 
+		upto += len(cluster.assignments)
+
+	upto = floor(upto/len(clusters)) 
+
+	# print('Going up to', upto)
+	# print("Random choices:")
+	# F,AS = PR.simulate_uniform_firsttwo(X_train, X_tests,N,upto)
+	# score = round(sum(F[math.ceil(N/2):]),3)
+	# dump_results(clusters,F,score,lworkingpath,'-random',AS=AS)
 	
-	clusters,F,T,X_test,score = driver_cluster_third_eight_bits(dataset,clusters,N,kp,min_acc*.9,1,2,'-2')
+	clusters,F,T,X_test,score,X_train = cluster2(dataset,clusters,N,kp,min_acc*.9,1,2,'-2')
 	dump_results(clusters,F,score,lworkingpath,ext='-2')
 
 	clusters_set.append(clusters)
@@ -164,17 +178,13 @@ def driver_cluster_full_address(dataset,N,kp,min_acc,mode,lworkingpath):
 	score = round(sum(F[math.ceil(N/2):]),3)
 	dump_results(clusters,F,score,lworkingpath,'-all',AS=AS)
 	
+	print("Random choices:")
+	F,AS = PR.simulate_uniform(X_train, X_tests,N)
+	score = round(sum(F[math.ceil(N/2):]),3)
+	dump_results(clusters,F,score,lworkingpath,'-random',AS=AS)
+	
 
-def correlation(dataset,i,j):
-	X = []
-	Y = [] 
-	for P in dataset: 
-		X.append((P.addresses[0][i]))
-	for P in dataset: 
-		Y.append(P.addresses[0][j])
 
-	cc = corrcoef(X,Y)
-	return cc 
 
 
 def check_group_intersections():
@@ -201,33 +211,24 @@ def check_group_intersections():
 
 
 def driver(sourcefile='data_aws_ireland.csv',N=5,kp=0.05,min_acc = 0.2,datalimit=-1,redirectouput=True,lworkingpath='~/'):
-	# if len(sys.argv) > 1: 
-	# 	sourcefile=sys.argv[1]
-	# if len(sys.argv) > 2: 
-	# 	N=int(sys.argv[2])
-	# if len(sys.argv) > 3: 
-	# 	kp=float(sys.argv[3])
-	# if len(sys.argv) > 4: 
-	# 	min_acc = float(sys.argv[4])
-	# if len(sys.argv) > 5: 
-	# 	datalimit = int(sys.argv[5])
 	global workingpath
 	workingpath = os.path.expanduser(lworkingpath)
-	# if redirectouput:
-	# 	sys.stdout = open(os.path.expanduser(workingpath)+'/output', 'w')	
 
 	if len(workingpath) is 0:
-		#raise Exception('No obvious working path...',lworkingpath)
 		workingpath = lworkingpath
+
 	print('Working path set to',workingpath)	
 
-	mode = 0 #Random vs most frequent initialization 
-	#print(sys.argv)
+
 	print('Data limit:', datalimit, 'KP', kp, 'N', N, 'Min accuracy', min_acc)
 	dataset = retrieve_data(sourcefile,N,datalimit)
-	#print('Pearson product-moment correlation coefficients:\n',correlation(dataset,0,1),'\n',
-	#	correlation(dataset,1,2),'\n',correlation(dataset,2,3),'\n',correlation(dataset,1,3),'\n' )
+
+	
 	print(datetime.now())
-	driver_cluster_full_address(dataset,N,kp,min_acc,mode,lworkingpath)
+	clusters,F,T,X_test,score,X_train,X_test = cluster1(dataset,N,kp,min_acc=min_acc)
+	dump_results(clusters,F,score,lworkingpath)
+	print('Results 1 recorded.')
+	
 	print(datetime.now())
+
 
