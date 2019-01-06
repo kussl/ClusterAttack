@@ -71,26 +71,64 @@ class DataSource:
 		cursor = db[collection].count()
 		return cursor
 
-	def unique_values2(self,collection,upto):
+	def unique_values2(self,collection,upto,limit=0):
 		db = self.IPdatabase()
 		projected = dict()
 		for i in range(1,upto+1):
 			projected[str(i)] = '$subnet'+str(i)
-		cursor = db[collection].aggregate(
-				   [
-				   	  {'$sort': {'date': -1} },
-				   	  #{ '$limit' : 4000 },
+		if limit > 0:
+			cursor = db[collection].aggregate(
+					   [
+					   	  {'$sort': {'date': -1} },
+					   	  { '$limit' : limit },
 
-				      {
-				        '$group' : {
-				           '_id' : projected,
-				           'count': { "$sum": 1 }
-				        }
-				      }, 
+					      {
+					        '$group' : {
+					           '_id' : projected,
+					           'count': { "$sum": 1 }
+					        }
+					      }, 
 
-				   ]
-				)
+					   ]
+					)
+		else: 
+			cursor = db[collection].aggregate(
+					   [
+					   	  {'$sort': {'date': -1} },
+
+					      {
+					        '$group' : {
+					           '_id' : projected,
+					           'count': { "$sum": 1 }
+					        }
+					      }, 
+
+					   ]
+					)
 		return cursor
+
+	def string_unique_values(self,region,limit):
+		DS = DataSource()
+		db = DS.IPdatabase()
+		cursor = db[region].aggregate(
+						   [
+						   	  {'$sort': {'date': -1} },
+						   	  { '$limit' : limit },
+						   	  {'$project': {
+									 'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'},'.',{'$toString': '$subnet3'}] }
+								}
+								},
+						      {
+						        '$group' : {
+						           '_id' : {'address': '$address'},
+						           'count': { "$sum": 1 }
+						        }
+						      }, 
+
+						   ]
+						)
+		values = list(cursor)
+		return sorted(values,key=lambda x:x['count'],reverse=True)	
 
 	def unique_values_per_day(self,collection,upto):
 		db = self.IPdatabase()
@@ -109,6 +147,32 @@ class DataSource:
 				      {
 				        '$group' : {
 				           '_id' :  {'date': '$yearMonthDayUTC', 'address': '$address'},
+				           'count': { "$sum": 1 }
+				        }
+				      }, 
+
+				   ]
+				)
+		return cursor
+
+	def unique_values_per_day_foraddress(self,collection,address,upto):
+		db = self.IPdatabase()
+		projected = []
+		for i in range(1,upto+1):
+			projected.append('$subnet'+str(i))
+		cursor = db[collection].aggregate(
+				   [
+				   	  {'$sort': {'date': -1} },
+				   	  {'$project':
+				         {
+				          'yearMonthDayHourUTC': { '$dateToString': { 'format': "%Y-%m-%d-%H", 'date': "$date" } },
+				          'address': projected,
+				         }
+				      },
+				      { '$match' : { 'address' : address } },
+				      {
+				        '$group' : {
+				           '_id' :  {'date': '$yearMonthDayHourUTC', 'address': '$address'},
 				           'count': { "$sum": 1 }
 				        }
 				      }, 
