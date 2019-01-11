@@ -1,0 +1,2 @@
+The dataset is a mongodb database. Simply restore this in a mongdob (version
+4>=) by: mongorestore dataset.

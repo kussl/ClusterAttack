@@ -265,15 +265,6 @@ class CentroidCluster:
 
 			correct_predictions = 0 
 
-			#Form the prediction and choice sets: 
-			'''
-			cluster_points = set(cluster_points)
-			choice = set(choice)
-
-			count = len(cluster_points)
-			correct_predictions = len(cluster_points&choice)
-			'''
-
 			choice = set(choice)
 			checked = [] 
 			for IP in cluster_points:
