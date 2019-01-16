@@ -50,7 +50,8 @@ class DataSource:
 	def datasets(self):
 		db = self.IPdatabase()
 		sets = db.collection_names()
-		return sorted(list(sets))
+		res =  sorted(list(sets))
+		return [r for r in res if r.find('SYN') == -1]
 
 	def unique_values(self,collection,upto):
 		db = self.IPdatabase()
@@ -192,8 +193,8 @@ class DataSource:
 				IP += '.'+str(value['_id'][str(i)])
 			freq = value['count'] 
 			relative_freq = round(freq/count,5)
-			freqs.append((IP,relative_freq))
-		return sorted(freqs,key=lambda x:x[1],reverse=True)
+			freqs.append((IP,relative_freq,freq))
+		return freqs #sorted(freqs,key=lambda x:x[1],reverse=True)
 
 
 	def rel_freq(self,collection,byte):

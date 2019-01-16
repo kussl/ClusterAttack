@@ -3,6 +3,12 @@ import statistics as stats
 from data import DataSource
 from centroid import CentroidCluster
 from math import floor
+import matplotlib.pyplot as plt
+from matplotlib import rcParams,rc
+
+#rcParams['font.family'] = 'STIXGeneral'
+#rcParams['font.sans-serif'] = ['STIXGeneral']
+rcParams['font.size']= 18
 
 def store_clusters(dataset,clusters,region):
 	f = open('clusters_'+region+'.txt','w')
@@ -19,6 +25,7 @@ def store_matrix(T,region):
 		print(i,T[i],file=f)
 	f.close()
 
+#Clustering and predicting using a single account.
 def cluster3(region,N,kp,limit):
 	CL = CentroidCluster()
 	DS = DataSource() 
@@ -45,14 +52,97 @@ def cluster3(region,N,kp,limit):
 	store_clusters(X_train,clusters,region)
 	store_matrix(T,region)
 
-	failed, counts = CL.simulate_attack(X_train,X_test,T,clusters,region,U)
+	failed, counts1 = CL.simulate_attack(X_train,X_test,T,clusters,region,U)
 
-	failed, counts = CL.simulate_random_attack(X_train,X_test,region,U,maxtrials=floor(stats.mean(counts)))
+	failed, counts2 = CL.simulate_random_attack(X_train,X_test,region,U,maxtrials=floor(stats.mean(counts1)))
 
-def driver(datasource='US-EAST-1',N=5,kp=0.05,datalimit=-1):
+	F = CL.load_unique_data_with_frequencies(region,N,limit=len(X_train*N))
+
+	failed, counts3 = CL.simulate_frequency_attack(X_train,X_test,region,F,maxtrials=floor(stats.mean(counts1)))
+
+	#plt.figure(figsize=(5,8))
+	plt.tight_layout() 
+	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True)
+
+	#plt.legend(['Cluster','Random','Frequency'],loc=1, prop={'size': 8})
+	#plt.ylabel('Number of guesses to predict N Prefixes',wrap=True)
+	#plt.xlabel('Attack strategy')
+	plt.xticks([1,2,3],['Cluster','Random','Frequency'])
+	plt.savefig('results_'+region+'.pdf',format='pdf')
+
+	f = open('allcounts_'+region,'w')
+	print(counts1,file=f)
+	print(counts2,file=f)
+	print(counts3,file=f)
+	f.close()
+
+#Clustering and predicting using two different user accounts
+def cluster4(region,N,kp,limit):
+	CL = CentroidCluster()
+	DS = DataSource() 
+	dataset_A = CL.load_data(region+'-A',N,limit)
+	n = len(dataset_A)
+	dataset_B = CL.load_data(region+'-B',N,limit) 
+	m = len(dataset_B)
+
+	if n < m: 
+		dataset_B= dataset_B[:n]
+	else: 
+		dataset_A= dataset_A[:m]
+
+	n = len(dataset_A)
+
+	print('Dataset size: ', n)
+
+	#A cutoff to separate train and test sequences. 
+	train_cutoff = int(n*0.70)
+
+	X_train = dataset_A
+	X_test  = dataset_B
+
+	U = CL.unique_combinations(X_train)
+
+	print('Unique values: ', len(U))
+
+	#Choose the size of clusters.
+	K= int(kp*len(X_train))
+
+	print('Size of train set', len(X_train), 'and the test set', len(X_test), 'K:',K)
+	clusters,T = CL.hausdorffcluster(X_train,K,N)
+	store_clusters(X_train,clusters,region)
+	store_matrix(T,region)
+
+	failed, counts1 = CL.simulate_attack(X_train,X_test,T,clusters,region,U)
+
+	failed, counts2 = CL.simulate_random_attack(X_train,X_test,region,U,maxtrials=floor(stats.mean(counts1)))
+
+	F = CL.load_unique_data_with_frequencies(region,N,limit=len(X_train*N))
+
+	failed, counts3 = CL.simulate_frequency_attack(X_train,X_test,region,F,maxtrials=floor(stats.mean(counts1)))
+
+	#plt.figure(figsize=(5,8))
+	plt.tight_layout() 
+	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True)
+
+	#plt.legend(['Cluster','Random','Frequency'],loc=1, prop={'size': 8})
+	#plt.ylabel('Number of guesses to predict N Prefixes',wrap=True)
+	#plt.xlabel('Attack strategy')
+	plt.xticks([1,2,3],['Cluster','Random','Frequency'])
+	plt.savefig('results_'+region+'.pdf',format='pdf')
+
+	f = open('allcounts_'+region,'w')
+	print(counts1,file=f)
+	print(counts2,file=f)
+	print(counts3,file=f)
+	f.close()
+
+def driver(datasource='US-EAST-1',N=5,kp=0.05,datalimit=-1,attack_type='-single'):
 	print('Dataset',datasource)
 	print('Data limit:', datalimit, 'KP', kp, 'N', N)
-	cluster3(datasource,N,kp,datalimit)
+	if attack_type == '-single':
+		cluster3(datasource,N,kp,datalimit)
+	elif attack_type == '-dual':
+		cluster4(datasource,N,kp,datalimit) 
 
 datasource = sys.argv[1]
 if len(sys.argv) > 2: 
@@ -68,4 +158,8 @@ if len(sys.argv) > 4:
 else: 
 	datalimit = -1 
 
-driver(datasource,N,kp,datalimit)
+if len(sys.argv) > 5: 
+	attack_type = sys.argv[5]
+
+
+driver(datasource,N=N,kp=kp,datalimit=datalimit,attack_type=attack_type)
