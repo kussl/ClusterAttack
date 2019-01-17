@@ -17,7 +17,7 @@ class CentroidCluster:
 		maxlimit = db[region].count()
 		if (limit <= 0) or (limit > maxlimit): 
 			limit = maxlimit
-		
+
 		cursor = db[region].aggregate(
 					   [
 					   	  {'$sort': {'date': 1} },
@@ -492,6 +492,8 @@ class CentroidCluster:
 		print('\nDone simulating random attacker.')
 
 		return failed, counts
+
+	
 
 
 

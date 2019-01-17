@@ -60,9 +60,9 @@ def cluster3(region,N,kp,limit):
 
 	failed, counts3 = CL.simulate_frequency_attack(X_train,X_test,region,F,maxtrials=floor(stats.mean(counts1)))
 
-	#plt.figure(figsize=(5,8))
+	#plt.figure(figsize=(5,5))
 	plt.tight_layout() 
-	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True)
+	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True, whis='range', widths=0.3)
 
 	#plt.legend(['Cluster','Random','Frequency'],loc=1, prop={'size': 8})
 	#plt.ylabel('Number of guesses to predict N Prefixes',wrap=True)
@@ -120,9 +120,9 @@ def cluster4(region,N,kp,limit):
 
 	failed, counts3 = CL.simulate_frequency_attack(X_train,X_test,region,F,maxtrials=floor(stats.mean(counts1)))
 
-	#plt.figure(figsize=(5,8))
+	plt.figure(figsize=(5,10))
 	plt.tight_layout() 
-	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True)
+	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True,  whis='range')
 
 	#plt.legend(['Cluster','Random','Frequency'],loc=1, prop={'size': 8})
 	#plt.ylabel('Number of guesses to predict N Prefixes',wrap=True)
@@ -160,6 +160,8 @@ else:
 
 if len(sys.argv) > 5: 
 	attack_type = sys.argv[5]
+else: 
+	attack_type = '-single'
 
 
 driver(datasource,N=N,kp=kp,datalimit=datalimit,attack_type=attack_type)
