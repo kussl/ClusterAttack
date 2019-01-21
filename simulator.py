@@ -1,4 +1,4 @@
-#centroid-based clustering
+#Attack simulator
 from data import DataSource
 from sklearn.metrics import jaccard_similarity_score 
 from scipy.spatial.distance import directed_hausdorff
@@ -8,7 +8,7 @@ import numpy as np
 import statistics as stats 
 import matplotlib.pyplot as plt
 
-class CentroidCluster:
+class Simulator:
 	def __init__(self):
 		pass 
 	def load_data(self,region,N,limit=0):

@@ -1,7 +1,7 @@
 import sys,pickle
 import statistics as stats 
 from data import DataSource
-from centroid import CentroidCluster
+from simulator import Simulator
 from math import floor
 import matplotlib.pyplot as plt
 from matplotlib import rcParams,rc
@@ -27,7 +27,7 @@ def store_matrix(T,region):
 
 #Clustering and predicting using a single account.
 def cluster3(region,N,kp,limit):
-	CL = CentroidCluster()
+	CL = Simulator()
 	DS = DataSource() 
 	dataset = CL.load_data(region,N,limit) 
 	n = len(dataset)
@@ -78,7 +78,7 @@ def cluster3(region,N,kp,limit):
 
 #Clustering and predicting using two different user accounts
 def cluster4(region,N,kp,limit):
-	CL = CentroidCluster()
+	CL = Simulator()
 	DS = DataSource() 
 
 	print('Attacking from two different accounts...')
