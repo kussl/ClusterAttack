@@ -1,0 +1,4 @@
+Datasets exported from mongodb in json format. 
+
+Simply load them in any database engine that supports json files. 
+However, currently, the code only works with mongodb. 
