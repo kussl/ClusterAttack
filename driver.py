@@ -1,4 +1,4 @@
-import sys
+import sys,pickle
 import statistics as stats 
 from data import DataSource
 from centroid import CentroidCluster
@@ -56,30 +56,34 @@ def cluster3(region,N,kp,limit):
 
 	failed, counts2 = CL.simulate_random_attack(X_train,X_test,region,U,maxtrials=floor(stats.mean(counts1)))
 
-	F = CL.load_unique_data_with_frequencies(region,N,limit=len(X_train*N))
+	F = CL.load_unique_data_with_frequencies(region,N,limit=len(X_train)*N)
 
 	failed, counts3 = CL.simulate_frequency_attack(X_train,X_test,region,F,maxtrials=floor(stats.mean(counts1)))
 
 	#plt.figure(figsize=(5,5))
 	plt.tight_layout() 
-	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True, whis='range', widths=0.3)
+	plt.boxplot([counts1,counts3,counts2], meanline=True, showcaps=True, whis='range', widths=0.3)
 
 	#plt.legend(['Cluster','Random','Frequency'],loc=1, prop={'size': 8})
 	#plt.ylabel('Number of guesses to predict N Prefixes',wrap=True)
 	#plt.xlabel('Attack strategy')
-	plt.xticks([1,2,3],['Cluster','Random','Frequency'])
+	plt.xticks([1,2,3],['Cluster','Frequency','Random'])
 	plt.savefig('results_'+region+'.pdf',format='pdf')
 
 	f = open('allcounts_'+region,'w')
 	print(counts1,file=f)
-	print(counts2,file=f)
 	print(counts3,file=f)
+	print(counts2,file=f)
 	f.close()
 
 #Clustering and predicting using two different user accounts
 def cluster4(region,N,kp,limit):
 	CL = CentroidCluster()
 	DS = DataSource() 
+
+	print('Attacking from two different accounts...')
+	print('limit:', limit)
+
 	dataset_A = CL.load_data(region+'-A',N,limit)
 	n = len(dataset_A)
 	dataset_B = CL.load_data(region+'-B',N,limit) 
@@ -120,25 +124,31 @@ def cluster4(region,N,kp,limit):
 
 	failed, counts3 = CL.simulate_frequency_attack(X_train,X_test,region,F,maxtrials=floor(stats.mean(counts1)))
 
-	plt.figure(figsize=(5,10))
-	plt.tight_layout() 
-	plt.boxplot([counts1,counts2,counts3], meanline=True, showcaps=True,  whis='range')
+	#plt.figure(figsize=(15,15))
+	#plt.tight_layout() 
+	plt.boxplot([counts1,counts3,counts2], meanline=True, showcaps=True,  whis='range')
 
 	#plt.legend(['Cluster','Random','Frequency'],loc=1, prop={'size': 8})
 	#plt.ylabel('Number of guesses to predict N Prefixes',wrap=True)
 	#plt.xlabel('Attack strategy')
-	plt.xticks([1,2,3],['Cluster','Random','Frequency'])
+	plt.xticks([1,2,3],['Cluster','Frequency','Random'])
 	plt.savefig('results_'+region+'.pdf',format='pdf')
 
-	f = open('allcounts_'+region,'w')
-	print(counts1,file=f)
-	print(counts2,file=f)
-	print(counts3,file=f)
+	f = open('count_c_'+region,'wb')
+	pickle.dump(counts1,f)
+	f.close()
+
+	f = open('count_r_'+region,'wb')
+	pickle.dump(counts3,f)
+	f.close()
+
+	f = open('count_f_'+region,'wb')
+	pickle.dump(counts2,f)
 	f.close()
 
 def driver(datasource='US-EAST-1',N=5,kp=0.05,datalimit=-1,attack_type='-single'):
 	print('Dataset',datasource)
-	print('Data limit:', datalimit, 'KP', kp, 'N', N)
+	print('Data limit:', datalimit, 'KP', kp, 'N', N, 'Attack Type', attack_type)
 	if attack_type == '-single':
 		cluster3(datasource,N,kp,datalimit)
 	elif attack_type == '-dual':

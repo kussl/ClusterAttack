@@ -20,10 +20,10 @@ class DataSource:
 		cursor = db[collection].find().sort('date',pymongo.ASCENDING)
 		if appendname:
 			if collindex is not None:
-				return [ [doc['subnet1'],doc['subnet2'],doc['subnet3'],doc['subnet4'],collindex] for doc in cursor]	
+				return [ [doc['b1'],doc['b2'],doc['b3'],doc['b4'],collindex] for doc in cursor]	
 			else: 
-				return [ [doc['subnet1'],doc['subnet2'],doc['subnet3'],doc['subnet4'],collection] for doc in cursor]	
-		return [ [doc['subnet1'],doc['subnet2'],doc['subnet3'],doc['subnet4']] for doc in cursor]
+				return [ [doc['b1'],doc['b2'],doc['b3'],doc['b4'],collection] for doc in cursor]	
+		return [ [doc['b1'],doc['b2'],doc['b3'],doc['b4']] for doc in cursor]
 
 	def getbaredata(self,collection):
 		db = self.IPdatabase()
@@ -32,18 +32,18 @@ class DataSource:
 
 	def getbareIPaddresses(self,collection,byte):
 		db = self.IPdatabase()
-		cursor = db[collection].find({},{"subnet"+str(byte):1}).sort('date',pymongo.ASCENDING)#.limit(4000)
-		return [rec['subnet'+str(byte)] for rec in list(cursor)]
+		cursor = db[collection].find({},{"b"+str(byte):1}).sort('date',pymongo.ASCENDING)#.limit(4000)
+		return [rec['b'+str(byte)] for rec in list(cursor)]
 
 	def getbareIPaddresses016(self,collection):
 		db = self.IPdatabase()
-		cursor = db[collection].find({},{"subnet1":1,"subnet2":1}).sort('date',pymongo.ASCENDING)#.limit(4000)
-		return [str(rec['subnet1'])+str(rec['subnet2']) for rec in list(cursor)]
+		cursor = db[collection].find({},{"b1":1,"b2":1}).sort('date',pymongo.ASCENDING)#.limit(4000)
+		return [str(rec['b1'])+str(rec['b2']) for rec in list(cursor)]
 
 	def getthirdwithdate(self,collection='data_aws_ireland'):
 		db = self.IPdatabase()
 		cursor = db[collection].aggregate([
-			{'$group': {'_id': {'address': '$subnet3' }, 'date': {'$push': '$date' } , 'count': {'$sum': 1} } }
+			{'$group': {'_id': {'address': '$b3' }, 'date': {'$push': '$date' } , 'count': {'$sum': 1} } }
 		])
 		return list(cursor) 
 
@@ -61,9 +61,9 @@ class DataSource:
 			strip = ''
 			i = 0 
 			for i in range(1,upto):
-				strip += str(row['subnet'+str(i)])+'.'
-			strip+=str(row['subnet'+str(i+1)])
-			#strip = str(row['subnet1'])+'.'+str(row['subnet2'])+'.'+str(row['subnet3'])+'.'+str(row['subnet4'])
+				strip += str(row['b'+str(i)])+'.'
+			strip+=str(row['b'+str(i+1)])
+			#strip = str(row['b1'])+'.'+str(row['b2'])+'.'+str(row['b3'])+'.'+str(row['b4'])
 			IPset.add(strip)
 		return IPset 
 
@@ -76,7 +76,7 @@ class DataSource:
 		db = self.IPdatabase()
 		projected = dict()
 		for i in range(1,upto+1):
-			projected[str(i)] = '$subnet'+str(i)
+			projected[str(i)] = '$b'+str(i)
 		if limit > 0:
 			cursor = db[collection].aggregate(
 					   [
@@ -116,7 +116,7 @@ class DataSource:
 						   	  {'$sort': {'date': -1} },
 						   	  { '$limit' : limit },
 						   	  {'$project': {
-									 'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'},'.',{'$toString': '$subnet3'}] }
+									 'address': { '$concat': [{'$toString': '$b1'},'.',{'$toString': '$b2'},'.',{'$toString': '$b3'}] }
 								}
 								},
 						      {
@@ -135,7 +135,7 @@ class DataSource:
 		db = self.IPdatabase()
 		projected = []
 		for i in range(1,upto+1):
-			projected.append('$subnet'+str(i))
+			projected.append('$b'+str(i))
 		cursor = db[collection].aggregate(
 				   [
 				   	  {'$sort': {'date': -1} },
@@ -160,7 +160,7 @@ class DataSource:
 		db = self.IPdatabase()
 		projected = []
 		for i in range(1,upto+1):
-			projected.append('$subnet'+str(i))
+			projected.append('$b'+str(i))
 		cursor = db[collection].aggregate(
 				   [
 				   	  {'$sort': {'date': -1} },
@@ -200,7 +200,7 @@ class DataSource:
 	def rel_freq(self,collection,byte):
 		db = self.IPdatabase()
 		count = int(db[collection].count())
-		cursor = db[collection].aggregate([ { '$group': {'_id': "$subnet"+str(byte), 'count':{'$sum': 1}}}])
+		cursor = db[collection].aggregate([ { '$group': {'_id': "$b"+str(byte), 'count':{'$sum': 1}}}])
 		res = []
 		i = 0
 		for rec in cursor: 
@@ -211,7 +211,7 @@ class DataSource:
 
 		res1 = round(-sum([p[1]*p[2] for p in res]),3), round(math.log(count),3), i
 
-		cursor = db[collection].aggregate([ { '$group': {'_id': {'1':"$subnet1",'2':"$subnet2",'3':"$subnet3" }, 'count':{'$sum': 1}}}]) 
+		cursor = db[collection].aggregate([ { '$group': {'_id': {'1':"$b1",'2':"$b2",'3':"$b3" }, 'count':{'$sum': 1}}}]) 
 
 		res = []
 		i = 0 
@@ -232,7 +232,7 @@ class DataSource:
 			coll = db2[dataset]
 			for row in cursor:
 				for i in range(1,5): 
-					row['subnet'+str(i)] = int(row['subnet'+str(i)])
+					row['b'+str(i)] = int(row['b'+str(i)])
 				coll.insert_one(row)
 
 

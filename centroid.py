@@ -23,9 +23,9 @@ class CentroidCluster:
 					   	  {'$sort': {'date': 1} },
 					   	  {'$limit': limit},
 					   	  {'$project': {
-					   	  		 #'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'},'.',{'$toString': '$subnet3'},'.',{'$toString': '$subnet4'}] }
-								 'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'},'.',{'$toString': '$subnet3'}] }
-								 #'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'}] }
+					   	  		 #'address': { '$concat': [{'$toString': '$b1'},'.',{'$toString': '$b2'},'.',{'$toString': '$b3'},'.',{'$toString': '$b4'}] }
+								 'address': { '$concat': [{'$toString': '$b1'},'.',{'$toString': '$b2'},'.',{'$toString': '$b3'}] }
+								 #'address': { '$concat': [{'$toString': '$b1'},'.',{'$toString': '$b2'}] }
 							}
 							},
 					   ]
@@ -45,9 +45,9 @@ class CentroidCluster:
 					   	  {'$sort': {'date': 1} },
 					   	  {'$limit': limit},
 					   	  {'$project': {
-					   	  		 #'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'},'.',{'$toString': '$subnet3'},'.',{'$toString': '$subnet4'}] }
-								 'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'},'.',{'$toString': '$subnet3'}] }
-								 #'address': { '$concat': [{'$toString': '$subnet1'},'.',{'$toString': '$subnet2'}] }
+					   	  		 #'address': { '$concat': [{'$toString': '$b1'},'.',{'$toString': '$b2'},'.',{'$toString': '$b3'},'.',{'$toString': '$b4'}] }
+								 'address': { '$concat': [{'$toString': '$b1'},'.',{'$toString': '$b2'},'.',{'$toString': '$b3'}] }
+								 #'address': { '$concat': [{'$toString': '$b1'},'.',{'$toString': '$b2'}] }
 							}
 							},
 						{
